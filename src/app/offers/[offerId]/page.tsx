@@ -32,6 +32,7 @@ export default function OfferDetailPage() {
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/offers/${offerId}`)
@@ -121,6 +122,32 @@ export default function OfferDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   }, [offer]);
 
+  const handleDownloadWord = async () => {
+    if (!offer) return;
+    setDownloading(true);
+
+    try {
+      const res = await fetch(`/api/offers/${offerId}/export-docx`);
+      if (!res.ok) throw new Error("Export failed");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ||
+        "Angebot.docx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
+
+    setDownloading(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen p-8">
@@ -169,6 +196,13 @@ export default function OfferDetailPage() {
             }`}
           >
             {copied ? "Copied!" : "Copy Markdown"}
+          </button>
+          <button
+            onClick={handleDownloadWord}
+            disabled={downloading}
+            className="px-4 py-2 text-sm border border-blue-500 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 transition-colors"
+          >
+            {downloading ? "Generating..." : "Download Word"}
           </button>
           <button
             onClick={handleSave}
